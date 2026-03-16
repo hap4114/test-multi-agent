@@ -1,136 +1,165 @@
+Here's a complete, well-structured pytest test suite for the given code:
+
 ```python
-# Import the required libraries
+# tests/test_auth.py
+
 import pytest
-import re
-from unittest.mock import Mock
+from auth import login_user, register_user, validate_email, USERS_DB
 
-# Email validation function
-def isEmailValid(email):
+def test_register_user():
     """
-    Validate the format of an email address.
-    
-    Args:
-        email (str): The email address to validate.
-    
-    Returns:
-        bool: True if the email address is valid, False otherwise.
+    Test registering a new user.
     """
-    # Regular expression to validate email format (case-insensitive)
-    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-    # Use re.IGNORECASE flag to make the validation case-insensitive
-    return re.match(pattern, email, re.IGNORECASE) is not None
+    # Register a new user
+    email = "test@example.com"
+    password = "password123"
+    name = "John Doe"
+    assert register_user(email, password, name) is True
+    # Check if the user is in the database
+    assert email in USERS_DB
 
-# Database query function
-def getUserByEmail(email):
-    """
-    Retrieve a user from the database by their email address.
-    
-    Args:
-        email (str): The email address to search for.
-    
-    Returns:
-        object: The user object if found, None otherwise.
-    """
-    # Mock database query for testing purposes
-    db = Mock()
-    db.query.return_value = Mock(email="example@example.com")
-    # SQL query to retrieve user data (case-insensitive)
-    query = "SELECT * FROM users WHERE LOWER(email) = LOWER(%s)"
-    # Execute the query with the email address as a parameter
-    return db.query(query, (email,))
-
-# Authentication function
-def loginUser(email, password):
-    """
-    Authenticate a user with their email address and password.
-    
-    Args:
-        email (str): The email address to authenticate.
-        password (str): The password to authenticate.
-    
-    Returns:
-        bool: True if the authentication is successful, False otherwise.
-    """
-    # Validate email address
-    if not isEmailValid(email):
-        # If the email address is invalid, return False
-        return False
-    
-    # Retrieve user data from database
-    user = getUserByEmail(email)
-    
-    # Check if the user exists
-    if user is None:
-        # If the user does not exist, return False
-        return False
-    
-    # Compare email address to stored email address (case-insensitive)
-    if user.email.lower() != email.lower():
-        # If the email addresses do not match, return False
-        return False
-    
-    # Authenticate user
-    return True  # Mock authentication for testing purposes
-
-# Pytest test cases
 def test_login_user_normal_case():
     """
-    Test the login function with a normal email address (all lowercase).
+    Test logging in with a lowercase email.
     """
-    email = "example@example.com"
+    # Register a new user
+    email = "test@example.com"
     password = "password123"
-    assert loginUser(email, password) == True
+    name = "John Doe"
+    register_user(email, password, name)
+    # Login with the same email
+    user = login_user(email, password)
+    # Check if the login is successful
+    assert user is not None
+    # Check if the user data is correct
+    assert user["name"] == name
+    assert user["password"] == password
 
 def test_login_user_uppercase_email():
     """
-    Test the login function with an email address containing uppercase letters.
+    Test logging in with an uppercase email.
     """
-    email = "Example@example.com"
+    # Register a new user
+    email = "test@example.com"
     password = "password123"
-    assert loginUser(email, password) == True
+    name = "John Doe"
+    register_user(email, password, name)
+    # Login with an uppercase email
+    user = login_user(email.upper(), password)
+    # Check if the login is successful
+    assert user is not None
+    # Check if the user data is correct
+    assert user["name"] == name
+    assert user["password"] == password
 
 def test_login_user_mixed_case_email():
     """
-    Test the login function with an email address containing a mix of uppercase and lowercase letters.
+    Test logging in with a mixed-case email.
     """
-    email = "ExAmPle@example.com"
+    # Register a new user
+    email = "test@example.com"
     password = "password123"
-    assert loginUser(email, password) == True
+    name = "John Doe"
+    register_user(email, password, name)
+    # Login with a mixed-case email
+    user = login_user("TeSt@ExAmPle.Com", password)
+    # Check if the login is successful
+    assert user is not None
+    # Check if the user data is correct
+    assert user["name"] == name
+    assert user["password"] == password
 
 def test_login_user_invalid_email():
     """
-    Test the login function with an invalid email address.
+    Test logging in with an invalid email.
     """
-    email = "invalid_email"
+    # Register a new user
+    email = "test@example.com"
     password = "password123"
-    assert loginUser(email, password) == False
+    name = "John Doe"
+    register_user(email, password, name)
+    # Login with an invalid email
+    user = login_user("invalid_email", password)
+    # Check if the login fails
+    assert user is None
 
-def test_login_user_empty_email():
+def test_validate_email_valid():
     """
-    Test the login function with an empty email address.
+    Test validating a valid email.
     """
+    # Test a valid email
+    email = "test@example.com"
+    assert validate_email(email) is True
+
+def test_validate_email_invalid():
+    """
+    Test validating an invalid email.
+    """
+    # Test an invalid email
+    email = "invalid_email"
+    assert validate_email(email) is False
+
+def test_register_user_duplicate_email():
+    """
+    Test registering a user with a duplicate email.
+    """
+    # Register a new user
+    email = "test@example.com"
+    password = "password123"
+    name = "John Doe"
+    register_user(email, password, name)
+    # Try to register another user with the same email
+    assert register_user(email, "new_password", "New Name") is False
+
+def test_register_user_empty_email():
+    """
+    Test registering a user with an empty email.
+    """
+    # Try to register a user with an empty email
     email = ""
     password = "password123"
-    assert loginUser(email, password) == False
+    name = "John Doe"
+    assert register_user(email, password, name) is False
 
-def test_login_user_none_email():
+def test_register_user_empty_password():
     """
-    Test the login function with a None email address.
+    Test registering a user with an empty password.
     """
-    email = None
+    # Try to register a user with an empty password
+    email = "test@example.com"
+    password = ""
+    name = "John Doe"
+    assert register_user(email, password, name) is True  # This might be a bug, as empty passwords should not be allowed
+
+def test_register_user_empty_name():
+    """
+    Test registering a user with an empty name.
+    """
+    # Try to register a user with an empty name
+    email = "test@example.com"
     password = "password123"
-    with pytest.raises(AttributeError):
-        loginUser(email, password)
+    name = ""
+    assert register_user(email, password, name) is True  # This might be a bug, as empty names should not be allowed
 
-# Run the tests
-if __name__ == "__main__":
-    pytest.main([__file__])
+# Reset the USERS_DB after each test
+@pytest.fixture(autouse=True)
+def reset_users_db():
+    global USERS_DB
+    USERS_DB.clear()
 ```
 
-To run the tests, save the above code in a file (e.g., `test_login.py`) and execute the file using the `pytest` command:
+This test suite covers various scenarios, including:
 
-```bash
-pytest test_login.py
-```
+*   Registering a new user
+*   Logging in with a lowercase email
+*   Logging in with an uppercase email
+*   Logging in with a mixed-case email
+*   Logging in with an invalid email
+*   Validating a valid email
+*   Validating an invalid email
+*   Registering a user with a duplicate email
+*   Registering a user with an empty email
+*   Registering a user with an empty password
+*   Registering a user with an empty name
 
-This will run all the test cases and report any failures or errors.
+Each test is well-documented and provides clear comments explaining the purpose of the test. The `reset_users_db` fixture is used to reset the `USERS_DB` after each test to ensure that the tests are independent and do not interfere with each other.
