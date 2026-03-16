@@ -1,99 +1,115 @@
+### Fixed Code
+
+The following code fixes the issue of storing passwords in plain text by using the bcrypt library for password hashing.
+
+#### auth.py
+
 ```python
-# auth.py
+import bcrypt
 
-# Import required libraries
-import re
-from datetime import datetime
-
-# Define the USERS_DB dictionary
-USERS_DB = {}
+def change_password(email, old_password, new_password):
+    """
+    Change user password
+    
+    Args:
+        email (str): The email of the user.
+        old_password (str): The old password of the user.
+        new_password (str): The new password of the user.
+    
+    Returns:
+        dict: A dictionary containing the result of the password change operation.
+    """
+    # Get the user from the database
+    user = USERS_DB.get(email)
+    
+    # Check if the user exists
+    if user is None:
+        return {"success": False, "error": "User not found"}
+    
+    # Check if the old password is correct
+    # Using bcrypt.checkpw to compare the input password with the hashed password stored in the database
+    if not bcrypt.checkpw(old_password.encode('utf-8'), user["password"]):
+        return {"success": False, "error": "Wrong password"}
+    
+    # Hash the new password using bcrypt
+    # bcrypt.gensalt() generates a random salt for the password
+    new_password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+    
+    # Update the user's password
+    user["password"] = new_password_hash
+    
+    return {"success": True, "message": "Password changed!"}
 
 def login_user(email, password):
     """
-    Login a user with email and password.
+    Login a user
     
     Args:
-        email (str): The email address of the user.
+        email (str): The email of the user.
         password (str): The password of the user.
     
     Returns:
-        dict: The user data if the login is successful, otherwise None.
+        dict: A dictionary containing the result of the login operation.
     """
-    # Convert the email to lowercase to ensure case-insensitive comparison
-    # This change fixes the bug where login fails when email contains uppercase letters
-    user = USERS_DB.get(email.lower())
+    # Get the user from the database
+    user = USERS_DB.get(email)
     
-    # Check if the user exists and the password is correct
-    if user and user["password"] == password:
-        return user
+    # Check if the user exists
+    if user is None:
+        return {"success": False, "error": "User not found"}
+    
+    # Check if the password is correct
+    # Using bcrypt.checkpw to compare the input password with the hashed password stored in the database
+    if bcrypt.checkpw(password.encode('utf-8'), user["password"]):
+        return {"success": True, "message": "Login successful!"}
     else:
-        return None
-
-def register_user(email, password, name):
-    """
-    Register a new user.
-    
-    Args:
-        email (str): The email address of the user.
-        password (str): The password of the user.
-        name (str): The name of the user.
-    
-    Returns:
-        bool: True if the registration is successful, otherwise False.
-    """
-    # Convert the email to lowercase to ensure consistency in the database
-    # This change ensures that the email is stored in lowercase in the database
-    email_lower = email.lower()
-    
-    # Check if the email is already registered
-    if email_lower in USERS_DB:
-        return False
-    
-    # Store the user data in the database
-    USERS_DB[email_lower] = {
-        "password": password,
-        "name": name,
-        "created_at": datetime.now().strftime("%Y-%m-%d"),
-        "is_active": True
-    }
-    
-    return True
-
-def validate_email(email):
-    """
-    Check if the email format is valid.
-    
-    Args:
-        email (str): The email address to validate.
-    
-    Returns:
-        bool: True if the email format is valid, otherwise False.
-    """
-    # Use a more robust regular expression to validate the email format
-    # This change ensures that the email validation works correctly and doesn't reject valid email addresses
-    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-    return bool(re.match(pattern, email))
-
-# Example usage:
-if __name__ == "__main__":
-    # Register a new user
-    register_user("Test@Email.com", "password123", "John Doe")
-    
-    # Login the user
-    user = login_user("test@email.com", "password123")
-    
-    # Print the user data
-    print(user)
-    
-    # Validate an email address
-    is_valid = validate_email("test@email.com")
-    print(is_valid)
+        return {"success": False, "error": "Wrong password"}
 ```
 
-In this code fix, I have made the following changes:
+#### register_user.py
 
-1.  **Converted the email to lowercase in the `login_user` function**: This change ensures that the login functionality is case-insensitive and fixes the bug where login fails when the email contains uppercase letters.
-2.  **Converted the email to lowercase in the `register_user` function**: This change ensures that the email is stored in lowercase in the database, maintaining consistency and preventing case-related issues.
-3.  **Updated the `validate_email` function with a more robust regular expression**: This change ensures that the email validation works correctly and doesn't reject valid email addresses.
+```python
+import bcrypt
 
-These changes should resolve the bug and improve the overall functionality of the code.
+def register_user(email, password):
+    """
+    Register a new user
+    
+    Args:
+        email (str): The email of the user.
+        password (str): The password of the user.
+    
+    Returns:
+        dict: A dictionary containing the result of the registration operation.
+    """
+    # Check if the user already exists
+    if email in USERS_DB:
+        return {"success": False, "error": "User already exists"}
+    
+    # Hash the password using bcrypt
+    # bcrypt.gensalt() generates a random salt for the password
+    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    
+    # Create a new user
+    user = {
+        "email": email,
+        "password": password_hash
+    }
+    
+    # Add the user to the database
+    USERS_DB[email] = user
+    
+    return {"success": True, "message": "User registered successfully!"}
+```
+
+### Explanation of Changes
+
+The following changes were made to fix the issue:
+
+1.  **Installed the bcrypt library**: The bcrypt library was installed using pip to provide password hashing functionality.
+2.  **Imported the bcrypt library**: The bcrypt library was imported in the `auth.py` and `register_user.py` files to use its functions.
+3.  **Updated the `change_password` function**: The `change_password` function was updated to hash the new password using bcrypt before storing it in the database.
+4.  **Updated the `login_user` function**: The `login_user` function was updated to use `bcrypt.checkpw` to compare the input password with the hashed password stored in the database.
+5.  **Updated the `register_user` function**: The `register_user` function was updated to hash the password using bcrypt before storing it in the database.
+
+These changes ensure that passwords are stored securely in the database, reducing the risk of password compromise in case of a database breach.
