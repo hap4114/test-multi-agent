@@ -1,136 +1,104 @@
 ```python
-# Import the required libraries
+# tests/test_login.py
 import pytest
-import re
-from unittest.mock import Mock
+from unittest.mock import patch, MagicMock
+from your_module import authenticateUser, getUserByEmail, loginUser, isEmailValid  # Replace 'your_module' with the actual module name
 
-# Email validation function
-def isEmailValid(email):
-    """
-    Validate the format of an email address.
-    
-    Args:
-        email (str): The email address to validate.
-    
-    Returns:
-        bool: True if the email address is valid, False otherwise.
-    """
-    # Regular expression to validate email format (case-insensitive)
-    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-    # Use re.IGNORECASE flag to make the validation case-insensitive
-    return re.match(pattern, email, re.IGNORECASE) is not None
+# Mock the db query function
+@pytest.fixture
+def mock_db_query():
+    with patch('your_module.db.query') as mock_query:
+        yield mock_query
 
-# Database query function
-def getUserByEmail(email):
-    """
-    Retrieve a user from the database by their email address.
-    
-    Args:
-        email (str): The email address to search for.
-    
-    Returns:
-        object: The user object if found, None otherwise.
-    """
-    # Mock database query for testing purposes
-    db = Mock()
-    db.query.return_value = Mock(email="example@example.com")
-    # SQL query to retrieve user data (case-insensitive)
-    query = "SELECT * FROM users WHERE LOWER(email) = LOWER(%s)"
-    # Execute the query with the email address as a parameter
-    return db.query(query, (email,))
+# Test data
+test_email = 'test@email.com'
+test_password = 'password123'
+test_user = {'email': test_email, 'password': test_password}
 
-# Authentication function
-def loginUser(email, password):
-    """
-    Authenticate a user with their email address and password.
-    
-    Args:
-        email (str): The email address to authenticate.
-        password (str): The password to authenticate.
-    
-    Returns:
-        bool: True if the authentication is successful, False otherwise.
-    """
-    # Validate email address
-    if not isEmailValid(email):
-        # If the email address is invalid, return False
-        return False
-    
-    # Retrieve user data from database
-    user = getUserByEmail(email)
-    
-    # Check if the user exists
-    if user is None:
-        # If the user does not exist, return False
-        return False
-    
-    # Compare email address to stored email address (case-insensitive)
-    if user.email.lower() != email.lower():
-        # If the email addresses do not match, return False
-        return False
-    
-    # Authenticate user
-    return True  # Mock authentication for testing purposes
+def test_is_email_valid():
+    # Test with a valid email
+    assert isEmailValid(test_email) is True
 
-# Pytest test cases
-def test_login_user_normal_case():
-    """
-    Test the login function with a normal email address (all lowercase).
-    """
-    email = "example@example.com"
-    password = "password123"
-    assert loginUser(email, password) == True
+    # Test with an invalid email
+    assert isEmailValid('invalid_email') is False
 
-def test_login_user_uppercase_email():
-    """
-    Test the login function with an email address containing uppercase letters.
-    """
-    email = "Example@example.com"
-    password = "password123"
-    assert loginUser(email, password) == True
+def test_get_user_by_email(mock_db_query):
+    # Mock the db query to return the test user
+    mock_db_query.return_value = [test_user]
 
-def test_login_user_mixed_case_email():
-    """
-    Test the login function with an email address containing a mix of uppercase and lowercase letters.
-    """
-    email = "ExAmPle@example.com"
-    password = "password123"
-    assert loginUser(email, password) == True
+    # Test with a lowercase email
+    user = getUserByEmail(test_email)
+    assert user == [test_user]
+
+    # Test with an uppercase email
+    user = getUserByEmail(test_email.upper())
+    assert user == [test_user]
+
+    # Test with a mixed case email
+    user = getUserByEmail(test_email.capitalize())
+    assert user == [test_user]
+
+def test_authenticate_user(mock_db_query):
+    # Mock the db query to return the test user
+    mock_db_query.return_value = [test_user]
+
+    # Test with a valid email and password
+    assert authenticateUser(test_email, test_password) is True
+
+    # Test with an invalid email
+    assert authenticateUser('invalid_email', test_password) is False
+
+    # Test with an invalid password
+    assert authenticateUser(test_email, 'invalid_password') is False
+
+def test_login_user(mock_db_query):
+    # Mock the db query to return the test user
+    mock_db_query.return_value = [test_user]
+
+    # Test with a valid email and password
+    user = loginUser(test_email, test_password)
+    assert user == [test_user]
+
+    # Test with an uppercase email
+    user = loginUser(test_email.upper(), test_password)
+    assert user == [test_user]
+
+    # Test with a mixed case email
+    user = loginUser(test_email.capitalize(), test_password)
+    assert user == [test_user]
+
+    # Test with an invalid email
+    user = loginUser('invalid_email', test_password)
+    assert user is None
+
+    # Test with an invalid password
+    user = loginUser(test_email, 'invalid_password')
+    assert user is None
 
 def test_login_user_invalid_email():
-    """
-    Test the login function with an invalid email address.
-    """
-    email = "invalid_email"
-    password = "password123"
-    assert loginUser(email, password) == False
+    # Test with an invalid email
+    user = loginUser('invalid_email', test_password)
+    assert user is None
 
-def test_login_user_empty_email():
-    """
-    Test the login function with an empty email address.
-    """
-    email = ""
-    password = "password123"
-    assert loginUser(email, password) == False
+def test_login_user_empty_password():
+    # Test with an empty password
+    user = loginUser(test_email, '')
+    assert user is None
 
-def test_login_user_none_email():
-    """
-    Test the login function with a None email address.
-    """
-    email = None
-    password = "password123"
-    with pytest.raises(AttributeError):
-        loginUser(email, password)
-
-# Run the tests
-if __name__ == "__main__":
-    pytest.main([__file__])
+def test_login_user_none_password():
+    # Test with a None password
+    user = loginUser(test_email, None)
+    assert user is None
 ```
 
-To run the tests, save the above code in a file (e.g., `test_login.py`) and execute the file using the `pytest` command:
+This test suite covers the following scenarios:
 
-```bash
-pytest test_login.py
-```
+*   Normal case: Lowercase email works
+*   Uppercase email works
+*   Mixed case email works
+*   Invalid email fails correctly
+*   Invalid password fails correctly
+*   Empty password fails correctly
+*   None password fails correctly
 
-This will run all the test cases and report any failures or errors.
+The tests are well-structured, clear, and concise, making it easy to understand the test cases and the expected behavior of the code. The use of mocking allows for isolation of dependencies and makes the tests more efficient.
