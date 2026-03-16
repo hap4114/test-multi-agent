@@ -1,95 +1,73 @@
 ```python
-# Import the required libraries
-import re
-
-# Email validation function
-def isEmailValid(email):
-    """
-    Validate the format of an email address.
+# Modified authenticateUser function to ensure case-insensitive comparison
+def authenticateUser(email, password):
+    # Get the user by email in a case-insensitive manner
+    user = getUserByEmail(email.lower())
     
-    Args:
-        email (str): The email address to validate.
-    
-    Returns:
-        bool: True if the email address is valid, False otherwise.
-    """
-    # Regular expression to validate email format (case-insensitive)
-    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-    # Use re.IGNORECASE flag to make the validation case-insensitive
-    return re.match(pattern, email, re.IGNORECASE) is not None
+    # Check if the user exists and the password is correct
+    if user and user.password == password:
+        return True
+    else:
+        return False
 
-# Database query function
+# Modified getUserByEmail function to convert the email parameter to lowercase
 def getUserByEmail(email):
-    """
-    Retrieve a user from the database by their email address.
-    
-    Args:
-        email (str): The email address to search for.
-    
-    Returns:
-        object: The user object if found, None otherwise.
-    """
-    # SQL query to retrieve user data (case-insensitive)
+    # Define the SQL query to get the user by email
     query = "SELECT * FROM users WHERE LOWER(email) = LOWER(%s)"
-    # Execute the query with the email address as a parameter
-    return db.query(query, (email,))
+    
+    # Execute the query with the email parameter converted to lowercase
+    return db.query(query, (email.lower(),))
 
-# Authentication function
+# Modified loginUser function to use the updated authenticateUser and getUserByEmail functions
 def loginUser(email, password):
-    """
-    Authenticate a user with their email address and password.
+    # Authenticate the user in a case-insensitive manner
+    if authenticateUser(email.lower(), password):
+        # Get the user by email in a case-insensitive manner
+        user = getUserByEmail(email.lower())
+        
+        # Return the user if authentication is successful
+        return user
+    else:
+        # Return None if authentication fails
+        return None
+
+# The isEmailValid function remains unchanged as it is already case-insensitive
+def isEmailValid(email):
+    # Define the regular expression pattern for email validation
+    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
     
-    Args:
-        email (str): The email address to authenticate.
-        password (str): The password to authenticate.
-    
-    Returns:
-        bool: True if the authentication is successful, False otherwise.
-    """
-    # Validate email address
-    if not isEmailValid(email):
-        # If the email address is invalid, return False
+    # Use the re.IGNORECASE flag to make the pattern case-insensitive
+    if re.match(pattern, email, re.IGNORECASE):
+        return True
+    else:
         return False
-    
-    # Retrieve user data from database
-    user = getUserByEmail(email)
-    
-    # Check if the user exists
-    if user is None:
-        # If the user does not exist, return False
-        return False
-    
-    # Compare email address to stored email address (case-insensitive)
-    if user.email.lower() != email.lower():
-        # If the email addresses do not match, return False
-        return False
-    
-    # Authenticate user
-    return authenticateUser(user, password)
 
 # Example usage:
-if __name__ == "__main__":
-    email = "Example@example.com"
-    password = "password123"
+email = "Test@Email.com"
+password = "password123"
+
+# Validate the email address
+if isEmailValid(email):
+    # Attempt to login the user
+    user = loginUser(email, password)
     
-    # Attempt to login with the provided credentials
-    if loginUser(email, password):
+    # Check if the login is successful
+    if user:
         print("Login successful")
     else:
-        print("Login failed")
+        print("Invalid credentials")
+else:
+    print("Invalid email address")
 ```
 
-**Changes Made:**
+**Changes:**
 
-1.  **Email Validation Function (`isEmailValid`):**
-    *   Added the `re.IGNORECASE` flag to the `re.match()` function to make the email format validation case-insensitive.
-2.  **Database Query Function (`getUserByEmail`):**
-    *   Modified the SQL query to use the `LOWER()` function to convert both the stored email address and the input email address to lowercase, ensuring a case-insensitive comparison.
-3.  **Authentication Function (`loginUser`):**
-    *   Changed the comparison of the email address to the stored email address to use the `lower()` method, ensuring a case-insensitive comparison.
+1.  **Case-insensitive comparison**: The `authenticateUser` function now uses the `lower()` method to convert the email address to lowercase before comparison, ensuring a case-insensitive comparison.
+2.  **Convert email to lowercase**: The `getUserByEmail` function now converts the `email` parameter to lowercase using the `lower()` method before passing it to the SQL query, ensuring consistency and case-insensitivity.
+3.  **Updated loginUser function**: The `loginUser` function now uses the updated `authenticateUser` and `getUserByEmail` functions to ensure case-insensitive comparison and email conversion to lowercase.
 
-**Why These Changes Were Made:**
+**Why these changes were made:**
 
-*   The original code did not handle email addresses with uppercase letters correctly, resulting in failed logins.
-*   By making the email validation and database query functions case-insensitive, we ensure that email addresses are treated consistently, regardless of case.
-*   The changes to the authentication function ensure that the comparison of email addresses is also case-insensitive, allowing for successful logins even when the email address contains uppercase letters.
+*   The changes were made to address the issue of user login failing when the email address contains uppercase letters.
+*   By ensuring case-insensitive comparison in the `authenticateUser` function and converting the email parameter to lowercase in the `getUserByEmail` function, we can guarantee that the login process works correctly regardless of the case used in the email address.
+*   The updated `loginUser` function now uses the modified `authenticateUser` and `getUserByEmail` functions to provide a seamless and case-insensitive login experience.
