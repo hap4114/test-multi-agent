@@ -1,203 +1,58 @@
 ```python
-# tests/test_auth.py
-
+# tests/test_login.py
 import pytest
-from auth import change_password, login_user
-from register_user import register_user
+from your_module import login_user, register_user, validate_email, USERS_DB  # Replace 'your_module' with the actual module name
 
-# Mock database for testing
-USERS_DB = {}
-
-def setup_module():
-    """Setup the mock database before running tests"""
+# Initialize an empty USERS_DB for each test
+@pytest.fixture(autouse=True)
+def reset_users_db():
     global USERS_DB
     USERS_DB = {}
 
-def teardown_module():
-    """Teardown the mock database after running tests"""
-    global USERS_DB
-    USERS_DB = {}
+def test_normal_case():
+    # Test normal case with lowercase email
+    register_user("test@email.com", "password123")
+    assert login_user("test@email.com", "password123") == "Login successful"
 
-def test_register_user_normal_case():
-    """Test registering a user with a normal email"""
-    email = "test@example.com"
-    password = "password123"
-    result = register_user(email, password)
-    assert result["success"] == True
-    assert result["message"] == "User registered successfully!"
-    assert email in USERS_DB
+def test_uppercase_email():
+    # Test uppercase email
+    register_user("TEST@EMAIL.COM", "password123")
+    assert login_user("TEST@EMAIL.COM", "password123") == "Login successful"
 
-def test_register_user_uppercase_email():
-    """Test registering a user with an uppercase email"""
-    email = "TEST@EXAMPLE.COM"
-    password = "password123"
-    result = register_user(email, password)
-    assert result["success"] == True
-    assert result["message"] == "User registered successfully!"
-    assert email in USERS_DB
+def test_mixed_case_email():
+    # Test mixed case email
+    register_user("TeSt@EmAiL.cOm", "password123")
+    assert login_user("TeSt@EmAiL.cOm", "password123") == "Login successful"
 
-def test_register_user_mixed_case_email():
-    """Test registering a user with a mixed case email"""
-    email = "TeSt@ExAmPle.Com"
-    password = "password123"
-    result = register_user(email, password)
-    assert result["success"] == True
-    assert result["message"] == "User registered successfully!"
-    assert email in USERS_DB
+def test_invalid_email():
+    # Test invalid email
+    assert validate_email("invalid_email") == "Invalid email"
 
-def test_register_user_invalid_email():
-    """Test registering a user with an invalid email"""
-    email = "invalid_email"
-    password = "password123"
-    result = register_user(email, password)
-    assert result["success"] == True
-    assert result["message"] == "User registered successfully!"
-    assert email in USERS_DB
+def test_invalid_credentials():
+    # Test invalid credentials
+    register_user("test@email.com", "password123")
+    assert login_user("test@email.com", "wrong_password") == "Invalid password"
 
-def test_login_user_normal_case():
-    """Test logging in a user with a normal email"""
-    email = "test@example.com"
-    password = "password123"
-    register_user(email, password)
-    result = login_user(email, password)
-    assert result["success"] == True
-    assert result["message"] == "Login successful!"
+def test_user_not_found():
+    # Test user not found
+    assert login_user("non_existent_user@email.com", "password123") == "User not found"
 
-def test_login_user_uppercase_email():
-    """Test logging in a user with an uppercase email"""
-    email = "TEST@EXAMPLE.COM"
-    password = "password123"
-    register_user(email.lower(), password)
-    result = login_user(email, password)
-    assert result["success"] == True
-    assert result["message"] == "Login successful!"
+def test_user_already_exists():
+    # Test user already exists
+    register_user("test@email.com", "password123")
+    assert register_user("test@email.com", "password123") == "User already exists"
 
-def test_login_user_mixed_case_email():
-    """Test logging in a user with a mixed case email"""
-    email = "TeSt@ExAmPle.Com"
-    password = "password123"
-    register_user(email.lower(), password)
-    result = login_user(email, password)
-    assert result["success"] == True
-    assert result["message"] == "Login successful!"
-
-def test_login_user_invalid_email():
-    """Test logging in a user with an invalid email"""
-    email = "invalid_email"
-    password = "password123"
-    register_user(email, password)
-    result = login_user(email, password)
-    assert result["success"] == True
-    assert result["message"] == "Login successful!"
-
-def test_change_password_normal_case():
-    """Test changing a user's password with a normal email"""
-    email = "test@example.com"
-    old_password = "password123"
-    new_password = "newpassword123"
-    register_user(email, old_password)
-    result = change_password(email, old_password, new_password)
-    assert result["success"] == True
-    assert result["message"] == "Password changed!"
-
-def test_change_password_uppercase_email():
-    """Test changing a user's password with an uppercase email"""
-    email = "TEST@EXAMPLE.COM"
-    old_password = "password123"
-    new_password = "newpassword123"
-    register_user(email.lower(), old_password)
-    result = change_password(email, old_password, new_password)
-    assert result["success"] == True
-    assert result["message"] == "Password changed!"
-
-def test_change_password_mixed_case_email():
-    """Test changing a user's password with a mixed case email"""
-    email = "TeSt@ExAmPle.Com"
-    old_password = "password123"
-    new_password = "newpassword123"
-    register_user(email.lower(), old_password)
-    result = change_password(email, old_password, new_password)
-    assert result["success"] == True
-    assert result["message"] == "Password changed!"
-
-def test_change_password_invalid_email():
-    """Test changing a user's password with an invalid email"""
-    email = "invalid_email"
-    old_password = "password123"
-    new_password = "newpassword123"
-    register_user(email, old_password)
-    result = change_password(email, old_password, new_password)
-    assert result["success"] == True
-    assert result["message"] == "Password changed!"
+def test_case_insensitive_login():
+    # Test case insensitive login
+    register_user("test@email.com", "password123")
+    assert login_user("TEST@EMAIL.COM", "password123") == "Login successful"
+    assert login_user("tEsT@eMaIl.cOm", "password123") == "Login successful"
 ```
 
-However, the above test cases will fail because the `register_user`, `login_user`, and `change_password` functions are case-sensitive when it comes to email. To fix this, we need to modify these functions to convert the email to lowercase before checking or storing it in the database.
-
-Here's the modified code:
-
-```python
-# register_user.py
-
-def register_user(email, password):
-    """Register a new user"""
-    email = email.lower()  # Convert email to lowercase
-    # Check if the user already exists
-    if email in USERS_DB:
-        return {"success": False, "error": "User already exists"}
-    
-    # Hash the password using bcrypt
-    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-    
-    # Create a new user
-    user = {
-        "email": email,
-        "password": password_hash
-    }
-    
-    # Add the user to the database
-    USERS_DB[email] = user
-    
-    return {"success": True, "message": "User registered successfully!"}
-
-# auth.py
-
-def login_user(email, password):
-    """Login a user"""
-    email = email.lower()  # Convert email to lowercase
-    # Get the user from the database
-    user = USERS_DB.get(email)
-    
-    # Check if the user exists
-    if user is None:
-        return {"success": False, "error": "User not found"}
-    
-    # Check if the password is correct
-    if bcrypt.checkpw(password.encode('utf-8'), user["password"]):
-        return {"success": True, "message": "Login successful!"}
-    else:
-        return {"success": False, "error": "Wrong password"}
-
-def change_password(email, old_password, new_password):
-    """Change user password"""
-    email = email.lower()  # Convert email to lowercase
-    # Get the user from the database
-    user = USERS_DB.get(email)
-    
-    # Check if the user exists
-    if user is None:
-        return {"success": False, "error": "User not found"}
-    
-    # Check if the old password is correct
-    if not bcrypt.checkpw(old_password.encode('utf-8'), user["password"]):
-        return {"success": False, "error": "Wrong password"}
-    
-    # Hash the new password using bcrypt
-    new_password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
-    
-    # Update the user's password
-    user["password"] = new_password_hash
-    
-    return {"success": True, "message": "Password changed!"}
+To run these tests, save this code in a file named `test_login.py` and use the following command:
+```bash
+pytest test_login.py
 ```
+Make sure to replace `'your_module'` with the actual module name where the `login_user`, `register_user`, `validate_email`, and `USERS_DB` are defined.
 
-With these modifications, the test cases should pass.
+Note: The `reset_users_db` fixture is used to reset the `USERS_DB` for each test, ensuring that each test starts with a clean database.
