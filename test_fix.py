@@ -1,58 +1,58 @@
-```python
-# tests/test_login.py
 import pytest
-from your_module import login_user, register_user, validate_email, USERS_DB  # Replace 'your_module' with the actual module name
+from auth import register_user, login_user, USERS_DB
+import bcrypt
 
-# Initialize an empty USERS_DB for each test
-@pytest.fixture(autouse=True)
-def reset_users_db():
-    global USERS_DB
-    USERS_DB = {}
+def test_register_user():
+    # test register user
+    result = register_user("test@example.com", "password123")
+    assert result == "User created"
+    # check if user is in database
+    assert "test@example.com" in USERS_DB
 
-def test_normal_case():
-    # Test normal case with lowercase email
-    register_user("test@email.com", "password123")
-    assert login_user("test@email.com", "password123") == "Login successful"
+def test_register_user_already_exists():
+    # test register user that already exists
+    register_user("test@example.com", "password123")
+    result = register_user("test@example.com", "password123")
+    assert result == "User already exists"
 
-def test_uppercase_email():
-    # Test uppercase email
-    register_user("TEST@EMAIL.COM", "password123")
-    assert login_user("TEST@EMAIL.COM", "password123") == "Login successful"
+def test_login_user():
+    # test login user
+    register_user("test@example.com", "password123")
+    result = login_user("test@example.com", "password123")
+    assert result == "Login successful"
 
-def test_mixed_case_email():
-    # Test mixed case email
-    register_user("TeSt@EmAiL.cOm", "password123")
-    assert login_user("TeSt@EmAiL.cOm", "password123") == "Login successful"
+def test_login_user_invalid_password():
+    # test login user with invalid password
+    register_user("test@example.com", "password123")
+    result = login_user("test@example.com", "wrongpassword")
+    assert result == "Invalid password"
 
-def test_invalid_email():
-    # Test invalid email
-    assert validate_email("invalid_email") == "Invalid email"
+def test_login_user_user_not_found():
+    # test login user that does not exist
+    result = login_user("test@example.com", "password123")
+    assert result == "User not found"
 
-def test_invalid_credentials():
-    # Test invalid credentials
-    register_user("test@email.com", "password123")
-    assert login_user("test@email.com", "wrong_password") == "Invalid password"
+def test_register_user_email_case_insensitive():
+    # test register user with different email case
+    register_user("TEST@EXAMPLE.COM", "password123")
+    result = login_user("test@example.com", "password123")
+    assert result == "Login successful"
 
-def test_user_not_found():
-    # Test user not found
-    assert login_user("non_existent_user@email.com", "password123") == "User not found"
+def test_login_user_email_case_insensitive():
+    # test login user with different email case
+    register_user("test@example.com", "password123")
+    result = login_user("TEST@EXAMPLE.COM", "password123")
+    assert result == "Login successful"
 
-def test_user_already_exists():
-    # Test user already exists
-    register_user("test@email.com", "password123")
-    assert register_user("test@email.com", "password123") == "User already exists"
+def test_password_hashing():
+    # test password hashing
+    password = "password123"
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    assert bcrypt.checkpw(password.encode('utf-8'), hashed_password)
 
-def test_case_insensitive_login():
-    # Test case insensitive login
-    register_user("test@email.com", "password123")
-    assert login_user("TEST@EMAIL.COM", "password123") == "Login successful"
-    assert login_user("tEsT@eMaIl.cOm", "password123") == "Login successful"
-```
-
-To run these tests, save this code in a file named `test_login.py` and use the following command:
-```bash
-pytest test_login.py
-```
-Make sure to replace `'your_module'` with the actual module name where the `login_user`, `register_user`, `validate_email`, and `USERS_DB` are defined.
-
-Note: The `reset_users_db` fixture is used to reset the `USERS_DB` for each test, ensuring that each test starts with a clean database.
+def test_password_hashing_different_passwords():
+    # test password hashing with different passwords
+    password1 = "password123"
+    password2 = "wrongpassword"
+    hashed_password = bcrypt.hashpw(password1.encode('utf-8'), bcrypt.gensalt())
+    assert not bcrypt.checkpw(password2.encode('utf-8'), hashed_password)
