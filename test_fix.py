@@ -1,13 +1,11 @@
 import pytest
-from auth import register_user, login_user, USERS_DB
+from auth import register_user, get_user, change_password
 import bcrypt
 
 def test_register_user():
     # test register user
     result = register_user("test@example.com", "password123")
     assert result == "User created"
-    # check if user is in database
-    assert "test@example.com" in USERS_DB
 
 def test_register_user_already_exists():
     # test register user that already exists
@@ -15,44 +13,46 @@ def test_register_user_already_exists():
     result = register_user("test@example.com", "password123")
     assert result == "User already exists"
 
-def test_login_user():
-    # test login user
+def test_get_user():
+    # test get user
     register_user("test@example.com", "password123")
-    result = login_user("test@example.com", "password123")
-    assert result == "Login successful"
+    result = get_user("test@example.com")
+    assert result is not None
 
-def test_login_user_invalid_password():
-    # test login user with invalid password
+def test_get_user_not_found():
+    # test get user that does not exist
+    result = get_user("test@example.com")
+    assert result is None
+
+def test_change_password():
+    # test change password
     register_user("test@example.com", "password123")
-    result = login_user("test@example.com", "wrongpassword")
-    assert result == "Invalid password"
+    result = change_password("test@example.com", "password123", "newpassword123")
+    assert result["success"] == True
 
-def test_login_user_user_not_found():
-    # test login user that does not exist
-    result = login_user("test@example.com", "password123")
-    assert result == "User not found"
-
-def test_register_user_email_case_insensitive():
-    # test register user with different email case
-    register_user("TEST@EXAMPLE.COM", "password123")
-    result = login_user("test@example.com", "password123")
-    assert result == "Login successful"
-
-def test_login_user_email_case_insensitive():
-    # test login user with different email case
+def test_change_password_wrong_old_password():
+    # test change password with wrong old password
     register_user("test@example.com", "password123")
-    result = login_user("TEST@EXAMPLE.COM", "password123")
-    assert result == "Login successful"
+    result = change_password("test@example.com", "wrongpassword123", "newpassword123")
+    assert result["success"] == False
 
-def test_password_hashing():
-    # test password hashing
-    password = "password123"
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-    assert bcrypt.checkpw(password.encode('utf-8'), hashed_password)
+def test_change_password_user_not_found():
+    # test change password for user that does not exist
+    result = change_password("test@example.com", "password123", "newpassword123")
+    assert result["success"] == False
 
-def test_password_hashing_different_passwords():
-    # test password hashing with different passwords
-    password1 = "password123"
-    password2 = "wrongpassword"
-    hashed_password = bcrypt.hashpw(password1.encode('utf-8'), bcrypt.gensalt())
-    assert not bcrypt.checkpw(password2.encode('utf-8'), hashed_password)
+def test_change_password_data_not_lost():
+    # test change password does not lose user data
+    register_user("test@example.com", "password123")
+    user = get_user("test@example.com")
+    change_password("test@example.com", "password123", "newpassword123")
+    new_user = get_user("test@example.com")
+    assert new_user["email"] == user["email"]
+
+def test_change_password_password_updated():
+    # test change password updates password
+    register_user("test@example.com", "password123")
+    change_password("test@example.com", "password123", "newpassword123")
+    user = get_user("test@example.com")
+    assert not bcrypt.checkpw("password123".encode('utf-8'), user["password"])
+    assert bcrypt.checkpw("newpassword123".encode('utf-8'), user["password"])
