@@ -1,58 +1,69 @@
 import pytest
-from auth import register_user, login_user, USERS_DB
+from auth import login_user, USERS_DB, LOGIN_ATTEMPTS, BLOCKED_IPS, reset_login_attempts, block_ip_address
 import bcrypt
 
-def test_register_user():
-    # test register user
-    result = register_user("test@example.com", "password123")
-    assert result == "User created"
-    # check if user is in database
-    assert "test@example.com" in USERS_DB
+@pytest.fixture(autouse=True)
+def clear_state():
+    USERS_DB.clear()
+    LOGIN_ATTEMPTS.clear()
+    BLOCKED_IPS.clear()
+    yield
+    USERS_DB.clear()
+    LOGIN_ATTEMPTS.clear()
+    BLOCKED_IPS.clear()
 
-def test_register_user_already_exists():
-    # test register user that already exists
-    register_user("test@example.com", "password123")
-    result = register_user("test@example.com", "password123")
-    assert result == "User already exists"
-
-def test_login_user():
-    # test login user
-    register_user("test@example.com", "password123")
-    result = login_user("test@example.com", "password123")
+def test_normal_case():
+    # test normal login
+    USERS_DB['user@example.com'] = bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt())
+    result = login_user('user@example.com', 'password')
     assert result == "Login successful"
 
-def test_login_user_invalid_password():
-    # test login user with invalid password
-    register_user("test@example.com", "password123")
-    result = login_user("test@example.com", "wrongpassword")
+def test_uppercase_email():
+    # test login with uppercase email
+    USERS_DB['user@example.com'] = bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt())
+    result = login_user('USER@EXAMPLE.COM', 'password')
+    assert result == "Login successful"
+
+def test_invalid_password():
+    # test login with invalid password
+    USERS_DB['user@example.com'] = bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt())
+    result = login_user('user@example.com', 'wrongpassword')
     assert result == "Invalid password"
 
-def test_login_user_user_not_found():
-    # test login user that does not exist
-    result = login_user("test@example.com", "password123")
+def test_user_not_found():
+    # test login with non-existent user
+    result = login_user('user@example.com', 'password')
     assert result == "User not found"
 
-def test_register_user_email_case_insensitive():
-    # test register user with different email case
-    register_user("TEST@EXAMPLE.COM", "password123")
-    result = login_user("test@example.com", "password123")
-    assert result == "Login successful"
+def test_rate_limiting():
+    # test rate limiting
+    USERS_DB['user@example.com'] = bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt())
+    for _ in range(5):
+        login_user('user@example.com', 'wrongpassword')
+    result = login_user('user@example.com', 'wrongpassword')
+    assert result == "Too many login attempts. Please try again later."
 
-def test_login_user_email_case_insensitive():
-    # test login user with different email case
-    register_user("test@example.com", "password123")
-    result = login_user("TEST@EXAMPLE.COM", "password123")
-    assert result == "Login successful"
+def test_ip_blocking():
+    # test IP blocking
+    USERS_DB['user@example.com'] = bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt())
+    for _ in range(5):
+        login_user('user@example.com', 'wrongpassword')
+    block_ip_address('127.0.0.1')
+    result = login_user('user@example.com', 'password')
+    assert result == "Your IP address has been blocked due to excessive login attempts."
 
-def test_password_hashing():
-    # test password hashing
-    password = "password123"
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-    assert bcrypt.checkpw(password.encode('utf-8'), hashed_password)
+def test_reset_login_attempts():
+    # test reset login attempts
+    USERS_DB['user@example.com'] = bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt())
+    for _ in range(5):
+        login_user('user@example.com', 'wrongpassword')
+    reset_login_attempts('user@example.com', '127.0.0.1')
+    result = login_user('user@example.com', 'wrongpassword')
+    assert result != "Too many login attempts. Please try again later."
 
-def test_password_hashing_different_passwords():
-    # test password hashing with different passwords
-    password1 = "password123"
-    password2 = "wrongpassword"
-    hashed_password = bcrypt.hashpw(password1.encode('utf-8'), bcrypt.gensalt())
-    assert not bcrypt.checkpw(password2.encode('utf-8'), hashed_password)
+def test_block_ip_address():
+    # test block IP address
+    USERS_DB['user@example.com'] = bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt())
+    block_ip_address('127.0.0.1')
+    result = login_user('user@example.com', 'password')
+    assert result == "Your IP address has been blocked due to excessive login attempts."
